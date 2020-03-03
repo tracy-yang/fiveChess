@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        body{
+            padding:0;
+            margin:0;
+        }
+        .main-wrapper{
+            display: flex;
+            align-items: flex-end;
+        }
+        canvas{
+            /* border:red solid 1px; */
+            background: #dedede;
+        }
+        .canvas-wrapper{
+            position: relative;
+        }
+        .mask{
+            position: absolute;
+            top:0;
+            left:0;
+            bottom: 0;
+            right: 0;
+            background: rgba(0, 0, 0, .3);
+            width: 600px;
+            height: 600px;
+        }
+        .btn{
+            background:#fff;
+            padding:6px 12px;
+            border:#dedede solid 1px;
+            border-radius: 4px;
+        }
+        .btn.active{
+            color:#fff;
+            background:#F39436;
+        }
+        .btn-group{
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%,-50%);
+        }
+        .btn-item{
+            padding:10px 0;
+        }
+        .btn-item > button{
+            margin-right: 10px;
+        }
+        .hidden{
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        <div class="canvas-wrapper">
+            <canvas id="canvas" width="600px" height="600px"></canvas>
+            <div class="mask">
+                <div class="btn-group">
+                    <div class="btn-item">
+                        <button id="start" class="btn start-btn">开始</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="btn-item">
+                <button class="btn white">选白子</button>
+                <button class="btn black">选黑子</button>
+            </div>
+            <div class="btn-item">
+                <button class="btn first">先出</button>
+                <button class="btn second">后出</button>
+            </div>
+        </div>
+    </div>
+   
+    <script src="https://cdn.bootcss.com/socket.io/2.3.0/socket.io.js"></script>
+    <script src="./index.js"></script>
+    <script>
+        var chess = new FiveChess({el:'#canvas'})
+            start = document.querySelector('#start'),
+            restart = document.querySelector('#restart'),
+            mask = document.querySelector('.mask'),
+            white = document.querySelector('.white'),
+            black = document.querySelector('.black'),
+            first = document.querySelector('.first'),
+            second = document.querySelector('.second');
+
+        
+        document.getElementById('canvas').addEventListener('click',function(event){
+            let e = event || window.event;
+            let mouse = chess.getMouse(e,this,chess.initX,chess.initY);
+            let coord = chess.findCoord(mouse.x,mouse.y);
+            if(coord.isHaveChess) return;
+            let originX =  coord.x;
+            let originY = coord.y;
+            let xLocation = originX/chess.itemWidth;
+            let yLocation = originY/chess.itemWidth;
+            coord.color = chooseColor;
+            socket.emit('drawChess',{id:socket.id,color:chooseColor,origin:{x:originX,y:originY},location:{x:xLocation,y:yLocation}});
+            coord.isHaveChess = true;
+        })
+
+
+        function draw(x,y,color,xLocation,yLocation){
+            chess._drawCircle({x,y,r:12,color:chess._getColor(color)})
+            let list = chess.isWin(xLocation,yLocation,color);
+            if(list.some(item => item)) socket.emit('win',{color:color})
+        }
+
+        start.addEventListener('click',function(){
+            if(chooseResult.length == 0 || !chooseResult.every(item => item)) return alert('请先选择棋子');
+            if(!isSente) return alert('暂无权限点击开始！')
+            socket.emit('startGame',{id:socket.id})
+            this.classList.toggle('hidden');
+            mask.classList.toggle('hidden')
+        },false)
+
+        white.addEventListener('click',function(){
+            socket.emit('chooseChess',{id:socket.id,color:1}) // 1:白棋，0:黑棋
+        })
+
+        black.addEventListener('click',function(){
+            socket.emit('chooseChess',{id:socket.id,color:0}) // 1:白棋，0:黑棋
+        })
+
+        first.addEventListener('click',function(){
+            socket.emit('isSente',{id:socket.id,sente:true}) // true:先手 false:后手
+        })
+
+        second.addEventListener('click',function(){
+            socket.emit('isSente',{id:socket.id,sente:false}) // true:先手 false:后手
+        })
+
+
+        let chooseColor ;
+        let socket = io('http://localhost:3001/chess');
+        var chooseResult = [],isSente;
+        socket.on('connect', () => {
+            socket.emit("subscribe", { room: "room1",id:socket.id });
+            socket.on('chessColor',({color,id})=>{
+                chooseResult.push(true)
+                if(id == socket.id){
+                    chooseColor = color;
+                    chess.setChessColor(color)
+                    color == 1 ? (black.disabled = true,white.classList.add('active')) :  (white.disabled = true,black.classList.add('active'))
+                }else{
+                    chooseColor = color == 1 ? 0 :1;
+                    chess.setChessColor(color == 1 ? 0 :1)
+                    color == 1 ? (white.disabled = true,black.classList.add('active')) :  (black.disabled = true,white.classList.add('active'))
+                }
+            })
+            socket.on('isSente',({id,sente})=>{
+                chooseResult.push(true)
+                if(id == socket.id){
+                    isSente = sente;
+                    sente ? (second.disabled = true,first.classList.add('active')) : (first.disabled = true,second.classList.add('active'));
+                }else{
+                    isSente = !sente;
+                    sente ? (first.disabled = true,second.classList.add('active')) : (second.disabled = true,first.classList.add('active'));
+                }
+            })
+            socket.on('startGame',()=>{
+                start.classList.add('hidden');
+                mask.classList.add('hidden')
+            })
+            socket.on('draw',({id,color,origin,location})=>{
+                draw(origin.x, origin.y,color,location.x,location.y);
+            })
+            socket.on('win',({color})=>{
+                if(chooseColor == color){
+                    return alert('您赢了！')
+                }
+                return alert('您输了！')
+            })
+        });
+
+    
+    </script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        body{
+            padding:0;
+            margin:0;
+        }
+        .main-wrapper{
+            display: flex;
+            align-items: flex-end;
+        }
+        canvas{
+            /* border:red solid 1px; */
+            background: #dedede;
+        }
+        .canvas-wrapper{
+            position: relative;
+        }
+        .mask{
+            position: absolute;
+            top:0;
+            left:0;
+            bottom: 0;
+            right: 0;
+            background: rgba(0, 0, 0, .3);
+            width: 600px;
+            height: 600px;
+        }
+        .btn{
+            background:#fff;
+            padding:6px 12px;
+            border:#dedede solid 1px;
+            border-radius: 4px;
+        }
+        .start-btn{
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%,-50%);
+        }
+        .hidden{
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        <div class="canvas-wrapper">
+            <canvas id="canvas" width="600px" height="600px"></canvas>
+            <div class="mask">
+                <button id="start" class="btn start-btn">开始</button>
+            </div>
+        </div>
+        <div>
+            <button id="restart" class="btn">重新开始</button>
+        </div>
+    </div>
+
+    <script src="./index.js"></script>
+    <script>
+        let chess = new FiveChess({el:'#canvas'})
+            start = document.querySelector('#start'),
+            restart = document.querySelector('#restart'),
+            mask = document.querySelector('.mask');
+
+        start.addEventListener('click',function(){
+            this.classList.toggle('hidden');
+            mask.classList.toggle('hidden')
+        },false)
+
+        restart.addEventListener('click',function(){
+            chess.restart();
+            start.classList.toggle('hidden');
+            mask.classList.toggle('hidden')
+        },false)
+
+    
+    </script>
+</body>
+</html>
